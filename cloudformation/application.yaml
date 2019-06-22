@@ -173,7 +173,7 @@ Resources:
             centizen_module_install puppet-utilities utilities
             centizen_module_install puppet-accredit accredit
 
-            sudo /opt/puppetlabs/bin/puppet apply --modulepath=/opt/puppetforge/modules -e 'class {"winspect": version => "${version}"}'
+            sudo /opt/puppetlabs/bin/puppet apply --modulepath=/opt/puppetforge/modules -e 'class {"accredit": version => "${version}"}'
 
 Outputs:
   AutoScalingGroupName:
