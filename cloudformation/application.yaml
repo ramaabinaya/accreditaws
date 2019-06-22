@@ -55,7 +55,8 @@ Parameters:
   SpotPrice:
     Type: String
     Default: '0.133'
-
+  version:
+    Type: String
 Conditions:
   InstanceProfileProvided: !Not [ !Equals [ "", !Ref IamInstanceProfile ] ]
   UseSpotInstances: !Not [ !Equals [ "", !Ref SpotPrice ] ]
@@ -172,7 +173,7 @@ Resources:
             centizen_module_install puppet-utilities utilities
             centizen_module_install puppet-accredit accredit
 
-            sudo /opt/puppetlabs/bin/puppet apply --modulepath=/opt/puppetforge/modules -e "include accredit"
+            sudo /opt/puppetlabs/bin/puppet apply --modulepath=/opt/puppetforge/modules -e 'class {"winspect": version => "${version}"}'
 
 Outputs:
   AutoScalingGroupName:
