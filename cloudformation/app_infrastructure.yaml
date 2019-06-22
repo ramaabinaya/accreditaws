@@ -127,14 +127,14 @@ Resources:
           Action:
           - s3:ListBucket
           Resource:
-          - arn:aws:s3:::centizenapps-accredit
-          - arn:aws:s3:::centizenapps-jenkins
+          - arn:aws:s3:::centizen-accredit
+          - arn:aws:s3:::centizen-jenkins
         - Sid: AllObjectActions
           Effect: Allow
           Action: s3:*Object
           Resource:
-          - arn:aws:s3:::centizenapps-accredit/*
-          - arn:aws:s3:::centizenapps-jenkins/*
+          - arn:aws:s3:::centizen-accredit/*
+          - arn:aws:s3:::centizen-jenkins/*
       Roles:
       - Ref: AppInfrastructureIAMRole
  
