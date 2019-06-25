@@ -35,7 +35,6 @@ Parameters:
   DBName:
     Description: Enter a Name u want
     Type: String
-    Default: MyDatabase
     AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
   MultiAZ:
     Description: Multi-AZ master database
@@ -50,7 +49,7 @@ Parameters:
   Subnets:
     Type: List<AWS::EC2::Subnet::Id>
   HostedZoneId:
-    Type: AWS::Route53::HostedZone::Id
+    Type: String
     Description: Enter HostedZoneId
   RecordSetType:
     Type: String
@@ -62,6 +61,9 @@ Parameters:
   RecordSetName:
     Type: String
     Description: Enter RecordSet Name without HostedZoneName (eg.) any.example.com
+
+Conditions:
+  UseHostZoneId: !Not [ !Equals [ "", !Ref HostedZoneId ] ]
 
 Resources:
   LoadBalancer:
@@ -76,6 +78,7 @@ Resources:
       - !Ref ApplicationIngressSecurityGroup
   ApplicationDNSRecord:
     Type: AWS::Route53::RecordSet
+    Condition: UseHostZoneId
     Properties:
       HostedZoneId: !Ref HostedZoneId
       Comment: DNS name for Application Load Balancer
@@ -127,14 +130,12 @@ Resources:
           Action:
           - s3:ListBucket
           Resource:
-          - arn:aws:s3:::centizen-accredit
-          - arn:aws:s3:::centizen-jenkins
+          - arn:aws:s3:::accredit-jenkins
         - Sid: AllObjectActions
           Effect: Allow
           Action: s3:*Object
           Resource:
-          - arn:aws:s3:::centizen-accredit/*
-          - arn:aws:s3:::centizen-jenkins/*
+          - arn:aws:s3:::accredit-jenkins/*
       Roles:
       - Ref: AppInfrastructureIAMRole
  
@@ -174,6 +175,15 @@ Resources:
       GroupName: !Sub '${AWS::StackName} Ingress SG'
       GroupDescription: !Sub 'Access for ${AWS::StackName} Ingress SG'
       VpcId: !Ref vpcId
+  RDSIngressSelfAllPorts:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !GetAtt RDSIngressSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 0
+      ToPort: 65535
+      SourceSecurityGroupId: !GetAtt RDSIngressSecurityGroup.GroupId
+      Description: All access to siblings
   ApplicationLoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -203,7 +213,7 @@ Resources:
       FromPort: 0
       ToPort: 65535
       SourceSecurityGroupId: !GetAtt ApplicationIngressSecurityGroup.GroupId
-      Description: All access to siblings 
+      Description: All access to siblings   
    
 Outputs:
   StackId:
@@ -230,15 +240,6 @@ Outputs:
   LoadBalancerName:
     Description: LoadBalancer deployed
     Value: !Ref LoadBalancer
-  RecordSetType:
-    Description: RecordSet Type
-    Value: !Ref RecordSetType
-  HostedZoneID:
-    Description: The ID of the Hosted Zone.
-    Value: !Ref  HostedZoneId
-  DomainName:
-    Description: Fully qualified domain name
-    Value: !Ref ApplicationDNSRecord
 
 
   
