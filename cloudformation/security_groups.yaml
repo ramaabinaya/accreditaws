@@ -1,10 +1,29 @@
-AWSTemplateFormatVersion: '2010-09-09'
+﻿AWSTemplateFormatVersion: '2010-09-09'
 Description: 'This template includes all security groups that are needed for CentizenApps'
-
 Parameters:
   vpcId:
     Description: VPC ID where this security group should be created
     Type: AWS::EC2::VPC::Id
+  AllowHTTPToWorld: 
+    Type: String
+    Default: false
+    AllowedValues: 
+      - true
+      - false
+    Description: Enter true or false
+  AllowHTTPSToWorld: 
+    Type: String
+    Default: false
+    AllowedValues: 
+      - true
+      - false
+    Description: Enter true or false
+
+Conditions: 
+  enableHTTPToWorld:   !Equals [ !Ref AllowHTTPToWorld,  true ]
+  enableHTTPSToWorld:  !Equals [ !Ref AllowHTTPSToWorld, true ]
+  disableHTTPToWorld:  !Equals [ !Ref AllowHTTPToWorld,  false ]
+  disableHTTPSToWorld: !Equals [ !Ref AllowHTTPSToWorld, false ]
 
 Mappings:
   CentizenIPs:
@@ -14,27 +33,32 @@ Mappings:
       ip: "50.53.43.182/32"
     JamesHome:
       ip: "74.39.164.207/32"
+    JamesHomeOld:
+      ip: "50.39.97.78/32"
     JanuryHome:
       ip: "49.206.126.131/32"
+    JanuryHomeOld:
+      ip: "13.250.150.91/32"
     Office1:
       ip: "103.219.207.253/32"
     Office2:
       ip: "103.219.206.127/32"
     Office3:
       ip: "59.93.32.210/32"
-    Office4:
-      ip: "59.93.33.64/32"
+    CCCMilford:               
+      ip: "98.118.42.47/32"
+    CCCRedHook:
+      ip: "208.105.11.14/32"
+    developmentVPN:
+      ip: "52.43.138.183/32"
+    
   ApplicationPorts:
-    www:
+    http:
       port: 80
     ssh:
       port: 22
-    appdefault:
-      port: 8080
-    nodeapp:
-      port: 4000
-    myphpadmin:
-      port: 8850
+    https:
+      port: 443
 
 Resources:
   SecurityGroupMain:
@@ -42,6 +66,22 @@ Resources:
     Properties:
       GroupName: !Sub '${AWS::StackName}'
       GroupDescription: !Sub '${AWS::StackName} access for Centizen locations'
+
+  SecurityGroupExternalAccess:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: !Sub '${AWS::StackName}-external-access'
+      GroupDescription: !Sub '${AWS::StackName} external access'
+
+  IngressExternalAccessAllPorts:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 443
+      SourceSecurityGroupId: !GetAtt SecurityGroupExternalAccess.GroupId
+      Description: All access to external services
 
   IngressSelfAllPorts:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -53,92 +93,253 @@ Resources:
       SourceSecurityGroupId: !GetAtt SecurityGroupMain.GroupId
       Description: All access to siblings
 
-# WWW to World Permission
-  IngressWwwWorld:
+# HTTP to World Permission
+  IngressHttpWorld:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: enableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, World, ip]
-      Description: Open to world
+      Description: HTTP Open to world
 
-# Nodeapp to World Permission
-  IngressNodeappWorld:
+# HTTPS to World Permission
+  IngressHttpsWorld:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: enableHTTPSToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
       CidrIp: !FindInMap [CentizenIPs, World, ip]
-      Description: Open nodeapp to world
+      Description: HTTPS Open to world
 
-# WWW Permission
-  IngressWwwAmalHome:
+# HTTP Permission
+  IngressHttpAmalHome:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, AmalHome, ip]
       Description: AmalHome
-  IngressWwwJamesHome:
+  IngressHttpJamesHome:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, JamesHome, ip]
       Description: JamesHome
-  IngressWwwJanuryHome:
+  IngressHttpJamesHomeOld:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
+      CidrIp: !FindInMap [CentizenIPs, JamesHomeOld, ip]
+      Description: JamesHomeOld
+  IngressHttpJanuryHome:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, JanuryHome, ip]
       Description: JanuryHome
-  IngressWwwOffice1:
+  IngressHttpJanuryHomeOld:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
+      CidrIp: !FindInMap [CentizenIPs, JanuryHomeOld, ip]
+      Description: JanuryHomeOld
+  IngressHttpOffice1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, Office1, ip]
       Description: Office1
-  IngressWwwOffice2:
+  IngressHttpOffice2:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, Office2, ip]
       Description: Office2
-  IngressWwwOffice3:
+  IngressHttpOffice3:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
       CidrIp: !FindInMap [CentizenIPs, Office3, ip]
       Description: Office3
-  IngressWwwOffice4:
+  IngressHttpCCCMilford:
     Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, www, port]
-      ToPort: !FindInMap [ApplicationPorts, www, port]
-      CidrIp: !FindInMap [CentizenIPs, Office4, ip]
-      Description: Office4
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
+      CidrIp: !FindInMap [CentizenIPs, CCCMilford, ip]
+      Description: CCCMilford
+  IngressHttpCCCRedHook:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
+      CidrIp: !FindInMap [CentizenIPs, CCCRedHook, ip]
+      Description: CCCRedHook
+  IngressHttpdevelopmentVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, http, port]
+      ToPort: !FindInMap [ApplicationPorts, http, port]
+      CidrIp: !FindInMap [CentizenIPs, developmentVPN, ip]
+      Description: developmentVPN
+
+# HTTPS Permission
+  IngressHttpsAmalHome:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, AmalHome, ip]
+      Description: AmalHome
+  IngressHttpsJamesHome:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, JamesHome, ip]
+      Description: JamesHome
+  IngressHttpsJamesHomeOld:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, JamesHomeOld, ip]
+      Description: JamesHomeOld
+  IngressHttpsJanuryHome:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, JanuryHome, ip]
+      Description: JanuryHome
+  IngressHttpsJanuryHomeOld:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, JanuryHomeOld, ip]
+      Description: JanuryHomeOld
+  IngressHttpsOffice1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, Office1, ip]
+      Description: Office1
+  IngressHttpsOffice2:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, Office2, ip]
+      Description: Office2
+  IngressHttpsOffice3:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, Office3, ip]
+      Description: Office3
+  IngressHttpsCCCMilford:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, CCCMilford, ip]
+      Description: CCCMilford
+  IngressHttpsCCCRedHook:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, CCCRedHook, ip]
+      Description: CCCRedHook
+  IngressHttspdevelopmentVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: disableHTTPSToWorld
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, https, port]
+      ToPort: !FindInMap [ApplicationPorts, https, port]
+      CidrIp: !FindInMap [CentizenIPs, developmentVPN, ip]
+      Description: developmentVPN
 
 # SSH Permission
   IngressSshAmalHome:
@@ -159,7 +360,16 @@ Resources:
       ToPort: !FindInMap [ApplicationPorts, ssh, port]
       CidrIp: !FindInMap [CentizenIPs, JamesHome, ip]
       Description: JamesHome
-  IngressSshJanuryHome:
+  IngressSshJamesHomeOld:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, ssh, port]
+      ToPort: !FindInMap [ApplicationPorts, ssh, port]
+      CidrIp: !FindInMap [CentizenIPs, JamesHomeOld, ip]
+      Description: JamesHomeOld
+  IngresSshJanuryHome:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupName: !Ref SecurityGroupMain
@@ -168,6 +378,15 @@ Resources:
       ToPort: !FindInMap [ApplicationPorts, ssh, port]
       CidrIp: !FindInMap [CentizenIPs, JanuryHome, ip]
       Description: JanuryHome
+  IngressSshJanuryHomeOld:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupName: !Ref SecurityGroupMain
+      IpProtocol: tcp
+      FromPort: !FindInMap [ApplicationPorts, ssh, port]
+      ToPort: !FindInMap [ApplicationPorts, ssh, port]
+      CidrIp: !FindInMap [CentizenIPs, JanuryHomeOld, ip]
+      Description: JanuryHomeOld
   IngressSshOffice1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -195,210 +414,33 @@ Resources:
       ToPort: !FindInMap [ApplicationPorts, ssh, port]
       CidrIp: !FindInMap [CentizenIPs, Office3, ip]
       Description: Office3
-  IngressSshOffice4:
+  IngressSshCCCMilford:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
       FromPort: !FindInMap [ApplicationPorts, ssh, port]
       ToPort: !FindInMap [ApplicationPorts, ssh, port]
-      CidrIp: !FindInMap [CentizenIPs, Office4, ip]
-      Description: Office4
-
-# AppDefault Permission
-  IngressAppDefaultAmalHome:
+      CidrIp: !FindInMap [CentizenIPs, CCCMilford, ip]
+      Description: CCCMilford
+  IngressSshCCCRedHook:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, AmalHome, ip]
-      Description: AmalHome
-  IngressAppDefaultJamesHome:
+      FromPort: !FindInMap [ApplicationPorts, ssh, port]
+      ToPort: !FindInMap [ApplicationPorts, ssh, port]
+      CidrIp: !FindInMap [CentizenIPs, CCCRedHook, ip]
+      Description: CCCRedHook
+  IngressSshdevelopmentVPN:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupName: !Ref SecurityGroupMain
       IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, JamesHome, ip]
-      Description: JamesHome
-  IngressAppDefaultJanuryHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, JanuryHome, ip]
-      Description: JanuryHome
-  IngressAppDefaultOffice1:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, Office1, ip]
-      Description: Office1
-  IngressAppDefaultOffice2:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, Office2, ip]
-      Description: Office2
-  IngressAppDefaultOffice3:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, Office3, ip]
-      Description: Office3
-  IngressAppDefaultOffice4:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, appdefault, port]
-      ToPort: !FindInMap [ApplicationPorts, appdefault, port]
-      CidrIp: !FindInMap [CentizenIPs, Office4, ip]
-      Description: Office4
-
-# NodeApp Permission
-  IngressNodeAppAmalHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, AmalHome, ip]
-      Description: AmalHome
-  IngressNodeAppJamesHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, JamesHome, ip]
-      Description: JamesHome
-  IngressNodeAppJanuryHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, JanuryHome, ip]
-      Description: JanuryHome
-  IngressNodeAppOffice1:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, Office1, ip]
-      Description: Office1
-  IngressNodeAppOffice2:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, Office2, ip]
-      Description: Office2
-  IngressNodeAppOffice3:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, Office3, ip]
-      Description: Office3
-  IngressNodeAppOffice4:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      ToPort: !FindInMap [ApplicationPorts, nodeapp, port]
-      CidrIp: !FindInMap [CentizenIPs, Office4, ip]
-      Description: Office4
-
-# MyPhpAdmin Permission
-  IngressMyPhpAdminAmalHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, AmalHome, ip]
-      Description: AmalHome
-  IngressMyPhpAdminJamesHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, JamesHome, ip]
-      Description: JamesHome
-  IngressMyPhpAdminJanuryHome:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, JanuryHome, ip]
-      Description: JanuryHome
-  IngressMyPhpAdminOffice1:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, Office1, ip]
-      Description: Office1
-  IngressMyPhpAdminOffice2:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, Office2, ip]
-      Description: Office2
-  IngressMyPhpAdminOffice3:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, Office3, ip]
-      Description: Office3
-  IngressMyPhpAdminOffice4:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupName: !Ref SecurityGroupMain
-      IpProtocol: tcp
-      FromPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      ToPort: !FindInMap [ApplicationPorts, myphpadmin, port]
-      CidrIp: !FindInMap [CentizenIPs, Office4, ip]
-      Description: Office4
+      FromPort: !FindInMap [ApplicationPorts, ssh, port]
+      ToPort: !FindInMap [ApplicationPorts, ssh, port]
+      CidrIp: !FindInMap [CentizenIPs, developmentVPN, ip]
+      Description: developmentVPN
 
 Outputs:
   SecurityGroupMain:
